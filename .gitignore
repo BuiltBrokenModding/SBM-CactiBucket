@@ -5,3 +5,11 @@ CompiledWith.txt
 build/
 output/
 SBM-CactiBucket.txt
+
+*.iws
+
+*.ipr
+
+run/
+
+out/
