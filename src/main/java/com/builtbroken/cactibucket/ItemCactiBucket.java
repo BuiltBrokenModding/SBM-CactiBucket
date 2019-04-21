@@ -1,19 +1,22 @@
 package com.builtbroken.cactibucket;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+
+import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
+import net.minecraft.client.audio.Sound;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.MovingObjectPosition;
+import net.minecraft.util.*;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.World;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 /**
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
@@ -22,15 +25,14 @@ import net.minecraftforge.fluids.FluidRegistry;
 public class ItemCactiBucket extends Item
 {
     @SideOnly(Side.CLIENT)
-    private IIcon[] fluid_icons;
 
     private Fluid[] fluids;
 
     public ItemCactiBucket()
     {
         setUnlocalizedName("cactibucket:bucket");
-        setTextureName("cactibucket:bucket");
-        setCreativeTab(CreativeTabs.tabMisc);
+        setRegistryName("cactibucket:bucket");
+        setCreativeTab(CreativeTabs.MISC);
     }
 
     public void postInit()
@@ -50,94 +52,95 @@ public class ItemCactiBucket extends Item
     }
 
     @Override
-    public ItemStack onItemRightClick(ItemStack stack, World world, EntityPlayer player)
+    public ActionResult<ItemStack> onItemRightClick(ItemStack stack, World world, EntityPlayer player, EnumHand hand)
     {
         Fluid fluid = getFluid(stack.getItemDamage());
-        MovingObjectPosition movingobjectposition = this.getMovingObjectPositionFromPlayer(world, player, fluid == null);
+        RayTraceResult movingobjectposition = this.rayTrace(world, player, fluid == null);
 
         if (movingobjectposition == null)
         {
-            return stack;
+            return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, stack);
         }
         else
         {
-            if (movingobjectposition.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK)
+            if (movingobjectposition.typeOfHit == RayTraceResult.Type.BLOCK)
             {
-                int i = movingobjectposition.blockX;
-                int j = movingobjectposition.blockY;
-                int k = movingobjectposition.blockZ;
+                BlockPos pos = movingobjectposition.getBlockPos();
+                int i = movingobjectposition.getBlockPos().getX();
+                int j = movingobjectposition.getBlockPos().getY();
+                int k = movingobjectposition.getBlockPos().getZ();
 
-                if (!world.canMineBlock(player, i, j, k))
+                if (!world.canMineBlockBody(player, pos))
                 {
-                    return stack;
+                    return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, stack);
+
                 }
 
                 if (fluid == null)
                 {
-                    if (!player.canPlayerEdit(i, j, k, movingobjectposition.sideHit, stack))
+                    if (!player.canPlayerEdit(pos, movingobjectposition.sideHit, stack))
                     {
-                        return stack;
+                        return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, stack);
                     }
 
-                    Material material = world.getBlock(i, j, k).getMaterial();
-                    int l = world.getBlockMetadata(i, j, k);
-
-                    if (material == Material.water && l == 0)
+                    Material material = world.getBlockState(pos).getMaterial();
+                    if (material == Material.WATER)
                     {
-                        world.setBlockToAir(i, j, k);
-                        return this.placeIntoInventory(stack, player, new ItemStack(this, 1, 1));
+                        world.setBlockToAir(pos);
+                        return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, this.placeIntoInventory(stack, player, new ItemStack(this, 1, 1)));
+
                     }
                 }
                 else
                 {
-                    if (fluid.getBlock() == null || fluid.getBlock() == Blocks.air)
+                    if (fluid.getBlock() == null || fluid.getBlock() == Blocks.AIR)
                     {
-                        return new ItemStack(this);
+                        return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, new ItemStack(this));
                     }
 
-                    if (movingobjectposition.sideHit == 0)
+                    if (movingobjectposition.sideHit == EnumFacing.DOWN)
                     {
                         --j;
                     }
 
-                    if (movingobjectposition.sideHit == 1)
+                    if (movingobjectposition.sideHit == EnumFacing.UP)
                     {
                         ++j;
                     }
 
-                    if (movingobjectposition.sideHit == 2)
+                    if (movingobjectposition.sideHit == EnumFacing.NORTH)
                     {
                         --k;
                     }
 
-                    if (movingobjectposition.sideHit == 3)
+                    if (movingobjectposition.sideHit == EnumFacing.SOUTH)
                     {
                         ++k;
                     }
 
-                    if (movingobjectposition.sideHit == 4)
+                    if (movingobjectposition.sideHit == EnumFacing.EAST)
                     {
                         --i;
                     }
 
-                    if (movingobjectposition.sideHit == 5)
+                    if (movingobjectposition.sideHit == EnumFacing.WEST)
                     {
                         ++i;
                     }
 
-                    if (!player.canPlayerEdit(i, j, k, movingobjectposition.sideHit, stack))
+                    if (!player.canPlayerEdit(pos, movingobjectposition.sideHit, stack))
                     {
-                        return stack;
+                        return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, stack);
                     }
 
                     if (this.tryPlaceContainedLiquid(world, i, j, k, fluid) && !player.capabilities.isCreativeMode)
                     {
-                        return new ItemStack(this);
+                        return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, new ItemStack(this));
                     }
                 }
             }
 
-            return stack;
+            return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, stack);
         }
     }
 
@@ -165,7 +168,7 @@ public class ItemCactiBucket extends Item
         {
             if (!player.inventory.addItemStackToInventory(item))
             {
-                player.dropPlayerItemWithRandomChoice(item, false);
+                player.dropItem(item, false);
             }
 
             return stack;
@@ -177,39 +180,47 @@ public class ItemCactiBucket extends Item
      */
     public boolean tryPlaceContainedLiquid(World world, int x, int y, int z, Fluid fluid)
     {
-        if (fluid == null || fluid.getBlock() == null || fluid.getBlock() == Blocks.air)
+        BlockPos pos = new BlockPos(x, y ,z);
+
+        if (fluid == null || fluid.getBlock() == null || fluid.getBlock() == Blocks.AIR)
         {
             return false;
         }
         else
         {
-            Material material = world.getBlock(x, y, z).getMaterial();
+            Material material = world.getBlockState(pos).getMaterial();
             boolean flag = !material.isSolid();
 
-            if (!world.isAirBlock(x, y, z) && !flag)
+            if (!world.isAirBlock(pos) && !flag)
             {
                 return false;
             }
             else
             {
-                if (world.provider.isHellWorld && fluid.getBlock() == Blocks.flowing_water)
+                if (!world.provider.isSurfaceWorld() && fluid.getBlock() == Blocks.FLOWING_WATER)
                 {
-                    world.playSoundEffect((double) ((float) x + 0.5F), (double) ((float) y + 0.5F), (double) ((float) z + 0.5F), "random.fizz", 0.5F, 2.6F + (world.rand.nextFloat() - world.rand.nextFloat()) * 0.8F);
+
+                    world.playSound((double) ((float) x + 0.5F), (double) ((float) y + 0.5F), (double) ((float) z + 0.5F), SoundEvent.REGISTRY.getObject(new ResourceLocation("random.fizz")), SoundCategory.BLOCKS, 0.5F, 2.6F + (world.rand.nextFloat() - world.rand.nextFloat()) * 0.8F, false);
 
                     for (int l = 0; l < 8; ++l)
                     {
-                        world.spawnParticle("largesmoke", (double) x + Math.random(), (double) y + Math.random(), (double) z + Math.random(), 0.0D, 0.0D, 0.0D);
+                        world.spawnParticle(EnumParticleTypes.SMOKE_NORMAL, (double) x + Math.random(), (double) y + Math.random(), (double) z + Math.random(), 0.0D, 0.0D, 0.0D);
                     }
                 }
                 else
                 {
                     if (!world.isRemote && flag && !material.isLiquid())
                     {
-                        world.func_147480_a(x, y, z, true);
+                        world.destroyBlock(pos, false);
                     }
-
-                    world.setBlock(x, y, z, fluid.getBlock(), 0, 3);
-                    fluid.getBlock().onNeighborBlockChange(world, x, y, z, fluid.getBlock());
+                    if(!world.isRemote) {
+                        Block block = fluid.getBlock();
+                        if(block == Blocks.WATER)
+                        {
+                            block = Blocks.FLOWING_WATER;
+                        }
+                        world.setBlockState(pos, block.getDefaultState(), 3);
+                    }
                 }
 
                 return true;
@@ -217,40 +228,8 @@ public class ItemCactiBucket extends Item
         }
     }
 
-    @Override
-    @SideOnly(Side.CLIENT)
-    public IIcon getIconFromDamageForRenderPass(int meta, int pass)
-    {
-        if (pass == 1)
-        {
-            Fluid fluid = getFluid(meta);
-            if (fluid != null && meta >= 1 && meta <= fluid_icons.length)
-            {
-                IIcon icon = fluid_icons[meta - 1];
-                if (icon != null)
-                {
-                    return icon;
-                }
-            }
-        }
-        return this.getIconFromDamage(meta);
-    }
 
-    @Override
-    @SideOnly(Side.CLIENT)
-    public boolean requiresMultipleRenderPasses()
-    {
-        return true;
-    }
 
-    @Override
-    @SideOnly(Side.CLIENT)
-    public void registerIcons(IIconRegister reg)
-    {
-        this.itemIcon = reg.registerIcon(this.getIconString());
-        this.fluid_icons = new IIcon[1];
-        this.fluid_icons[0] = reg.registerIcon(this.getIconString() + ".water");
-    }
 
     @Override
     @SideOnly(Side.CLIENT)

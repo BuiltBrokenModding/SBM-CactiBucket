@@ -1,0 +1,11 @@
+[
+{
+  "modid": "cactibucket",
+  "name": "Cacti Bucket",
+  "description": "Turn a cacti into a spiky bucket",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "authorList": ["DarkCow"]
+}
+]
